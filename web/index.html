@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Index</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@2.0.0/dist/tf.min.js"></script>
+  </head>
+  <body>
+    <h1>Sentiment model demo</h1>
+    <p>This is just a simple embedding DNN model trained in python tensorflow and deployed to frontend using tensorflow.js</p>
+    <p>By Anders L. Hurum aka @peakbreaker</p>
+    <input type="text" value="happy funny sweet awesome" name="" id="sentimentInput"/>
+    <button id="sentimentCalculate">submit</button>
+    <p>Sentiment is calculated to be <span id="sentimentOutput"></span></p>
+    <script>
+      // load the model
+      const MODEL_URL = 'https://pages.peakbreaker.com/tfjs_sentiment/web_model/model.json';
+      const META_URL = 'https://pages.peakbreaker.com/tfjs_sentiment/web_model/simplemodel_metadata.json';
+
+      let model;
+      let meta;
+      let tokenizer;
+
+      const modelDemo = async () => {
+          model = await tf.loadGraphModel(MODEL_URL);
+          meta_req = await fetch(META_URL);
+          meta = await meta_req.json()
+          //console.log(meta);
+          word_index = meta.word_index;
+          length = meta.max_length;
+
+          tokenizer = function (sentence) {
+            let data = [];
+            sentence = sentence.replace("  ", " "); // Crashed on double space
+            sentence = sentence.split(" ");
+            for (i = 0; i < length; i++ ) {
+              if (i < sentence.length) {
+                wi = word_index[sentence[i]];
+                if ( wi !== undefined ) {
+                  data.push(wi);
+                } else {
+                  //data.push(0);
+                  i--;
+                }
+              } else {
+                data.push(0);
+              }
+            }
+            return tf.tensor(data, [1, 120]);
+          }
+          var someText = 'happy wonderful text awesome';
+          //console.log(tokenizer(someText));
+          var result = model.predict(tokenizer(someText));
+          //console.log(result.dataSync()[0]);
+          runSentimentAnalysis();
+      }
+
+      // get the field
+      var sentimentInputElem = document.getElementById("sentimentInput");
+      var sentimentOutputElem = document.getElementById("sentimentOutput");
+
+      function runSentimentAnalysis() {
+              console.log("calculating sentiment")
+              sentimentOutputElem.innerHTML = "Loading..."
+              sentimentInput = sentimentInputElem.value;
+              let t = tokenizer(sentimentInput);
+              console.log(t.dataSync());
+              let result = model.predict(t)
+              let resultData = result.dataSync()[0];
+              let resultMsg = resultData > 0.5 ? "Happy" : "Sad";
+              sentimentOutputElem.innerHTML = resultData + " meaning " + resultMsg
+
+      }
+
+      document.getElementById("sentimentCalculate").addEventListener("click", runSentimentAnalysis);
+      modelDemo();
+
+    </script>
+  </body>
+</html>
